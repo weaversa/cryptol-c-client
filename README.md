@@ -1,2 +1,2 @@
 # cryptol-c-client
-A JSON RPC 2.0 client for Cryptol
+A C language client for Cryptol
