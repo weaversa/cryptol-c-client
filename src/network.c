@@ -26,3 +26,29 @@ int CryptolServiceConnect(char ip_address[16], uint32_t port) {
   
   return cryservfd;
 }
+
+json_object *CryptolServiceRead(int cryservfd) {
+  char c = 0;
+  char buffer[10];
+  int i, r;
+
+  for(i = 0; c != ':'; i++) {
+    r = read(cryservfd, &c, 1);
+    if(r != 1) return NULL;
+    buffer[i] = c;
+  }
+  buffer[i] = 0;
+
+  uint32_t nLength = atoi(buffer);
+
+  char *jsonstring = malloc(nLength+1);
+  r = read(cryservfd, jsonstring, nLength);
+  if(r != nLength) return NULL;
+
+  r = read(cryservfd, &c, 1); //Read comma
+  if(r != 1) return NULL;
+  
+  json_object *json_result = json_tokener_parse(jsonstring);
+  free(jsonstring);
+  return json_result;
+}

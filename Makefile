@@ -11,7 +11,7 @@ CC = gcc
 DBG = #-g -Wall -fstack-protector-all -pedantic
 OPT = -march=native -O3 -DNDEBUG -ffast-math -fomit-frame-pointer -finline-functions
 INCLUDES = -Iinclude
-LIBS = -l$(CRYPTOLCCLIENTLIB) -lm -lpthread
+LIBS = -l$(CRYPTOLCCLIENTLIB) -lm -ljson-c
 LDFLAGS = -Llib
 CFLAGS = -std=gnu99 $(DBG) $(OPT) $(INCLUDES)
 AR = ar r
