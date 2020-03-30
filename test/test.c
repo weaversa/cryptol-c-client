@@ -10,44 +10,40 @@ int main(int argc, char const *argv[]) {
   strncpy(ip_address, argv[1], 16);
   uint32_t port = atoi(argv[2]);
   
-  int cryservfd = CryptolServiceConnect(ip_address, port);
-  if(cryservfd == -1) return 0;
+  cryptol_service_t *cryserv = cryptol_service_connect(ip_address, port);
+  if(cryserv == NULL) return 0;
 
-  //Setup new session
+  cryptol_service_load_module(cryserv, "Primitive::Symmetric::Cipher::Block::AES");
+
   json_object *msg = json_object_new_object();
-  json_object_object_add(msg, "jsonrpc", json_object_new_string("2.0"));
-  json_object_object_add(msg, "id", json_object_new_string("0"));
-  
+  json_object_object_add(msg, "method", json_object_new_string("evaluate expression"));
+
   json_object *params = json_object_new_object();
   json_object_object_add(msg, "params", params);
-  json_object_object_add(params, "state", json_object_new_array());
+
+  json_object *expression = json_object_new_object();
+  json_object_object_add(params, "expression", expression);
+
+  json_object_object_add(expression, "expression", json_object_new_string("call"));
+  json_object_object_add(expression, "function", json_object_new_string("msgToState"));
   
-  printf("msg=%s\n", json_object_get_string(msg));
+  json_object *arguments = json_object_new_array();
+  json_object_object_add(expression, "arguments", arguments);
 
-  json_object_put(msg); //free msg and all referenced objects
+  json_object *arg0 = json_object_new_object();
+  json_object_array_add(arguments, arg0);
 
-  //Finish later
+  json_object_object_add(arg0, "expression", json_object_new_string("bits"));
+  json_object_object_add(arg0, "encoding", json_object_new_string("hex"));
+  json_object_object_add(arg0, "data", json_object_new_string("0123456789abcdef0123456789abcdef"));
+  json_object_object_add(arg0, "width", json_object_new_int(128));
+
+  cryptol_service_send(cryserv, msg);
   
-  char str[1024] = "{\"jsonrpc\":\"2.0\",\"method\":\"load module\",\"params\":{\"state\":[],\"module name\":\"Primitive::Symmetric::Cipher::Block::AES\"},\"id\":0}";
-  char netstr[1024];
-
-  sprintf(netstr, "%ld:%s,", strlen(str), str);
-  send(cryservfd, netstr, strlen(netstr), 0);
-  fprintf(stdout, "Message sent\n");
-
-  json_object *json_result = CryptolServiceRead(cryservfd);
-  printf("result=%s\n", json_object_get_string(json_result));
+  json_object *json_result = cryptol_service_read(cryserv);
   json_object_put(json_result); //free result
 
-  char straes[1024] = "{\"jsonrpc\":\"2.0\",\"method\":\"evaluate expression\",\"params\":{\"state\":[[\"load module\",{\"module name\":\"Primitive::Symmetric::Cipher::Block::AES\"}]],\"expression\":{\"expression\":\"call\",\"function\":\"msgToState\",\"arguments\":[{\"expression\":\"bits\",\"encoding\":\"hex\",\"data\":\"0123456789abcdef0123456789abcdef\",\"width\":128}]}},\"id\":1}";
-
-  sprintf(netstr, "%ld:%s,", strlen(straes), straes);  
-  send(cryservfd, netstr, strlen(netstr), 0);
-  fprintf(stdout, "Message sent\n");
-
-  json_result = CryptolServiceRead(cryservfd);
-  printf("result=%s\n", json_object_get_string(json_result));
-  json_object_put(json_result); //free result
+  cryptol_service_disconnect(cryserv);
   
   return 0;
 }

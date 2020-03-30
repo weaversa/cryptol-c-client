@@ -1,12 +1,12 @@
 #include "cryptol-service.h"
 
-int CryptolServiceConnect(char ip_address[16], uint32_t port) {
-  int cryservfd = 0;
+cryptol_service_t *cryptol_service_connect(char ip_address[16], uint32_t port) {
+  cryptol_service_t *cryserv = malloc(sizeof(cryptol_service_t));
   struct sockaddr_in cryserv_addr;
   //Create socket to Cryptol service
-  if ((cryservfd = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+  if ((cryserv->socket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
     fprintf(stderr, "Socket creation to Cryptol service failed.\n");
-    return -1;
+    return NULL;
   }
   
   cryserv_addr.sin_family = PF_INET;
@@ -15,40 +15,143 @@ int CryptolServiceConnect(char ip_address[16], uint32_t port) {
   //Fill cryserv_addr.sin_addr with the IP address of the Cryptol service
   if(inet_pton(PF_INET, ip_address, &cryserv_addr.sin_addr) <= 0) {
     fprintf(stderr, "Error: Can't parse IP address (%s) of Cryptol service\n", ip_address);
-    return -1;
+    return NULL;
   }
 
   //Attempt to connect to the Cryptol service
-  if(connect(cryservfd, (struct sockaddr *)&cryserv_addr, sizeof(cryserv_addr)) < 0) {
+  if(connect(cryserv->socket, (struct sockaddr *)&cryserv_addr, sizeof(cryserv_addr)) < 0) {
     printf("Error: Connection to Cryptol service failed\n");
-    return -1;
+    return NULL;
   }
+
+  //Initialize a new session -- empty state and id of 0.
+  cryserv->state = json_object_new_array();
+  cryserv->id = json_object_new_int(0);
   
-  return cryservfd;
+  return cryserv;
 }
 
-json_object *CryptolServiceRead(int cryservfd) {
+void cryptol_service_disconnect(cryptol_service_t *cryserv) {
+  close(cryserv->socket);
+  json_object_put(cryserv->state);
+  json_object_put(cryserv->id);
+
+  free(cryserv);
+}
+
+int numPlaces (int n) {
+  if (n == 0) return 1;
+  return floor (log10 (abs (n))) + 1;
+}
+
+void cryptol_service_send(cryptol_service_t *cryserv, json_object *message) {
+  json_object_object_add(message, "jsonrpc", json_object_new_string("2.0"));
+
+  json_object *params;
+  if(json_object_object_get_ex(message, "params", &params) == FALSE) {
+    //Missing params, add it to message
+    params = json_object_new_object();
+    json_object_object_add(message, "params", params);
+  }
+  
+  json_object_object_add(params, "state", json_object_get(cryserv->state));
+  json_object_object_add(message, "id", json_object_get(cryserv->id));
+
+  const char *message_string = json_object_get_string(message);
+
+  uint32_t netstring_size = strlen(message_string) + numPlaces(strlen(message_string)) + 3;
+  char *netstring = malloc(netstring_size);
+  snprintf(netstring, netstring_size, "%ld:%s,", strlen(message_string), message_string);
+  send(cryserv->socket, netstring, strlen(netstring), 0);
+  fprintf(stdout, "Message sent: %s\n", message_string);
+
+  free(netstring);
+  json_object_put(message); //free message and all referenced objects
+}
+
+json_object *cryptol_service_read(cryptol_service_t *cryserv) {
   char c = 0;
   char buffer[10];
   int i, r;
-
-  for(i = 0; c != ':'; i++) {
-    r = read(cryservfd, &c, 1);
+  for(i = 0; (i < 10) && (c != ':'); i++) {
+    r = read(cryserv->socket, &c, 1);
     if(r != 1) return NULL;
     buffer[i] = c;
   }
-  buffer[i] = 0;
+  if(buffer[i-1] != ':') return NULL;
+  buffer[i-1] = 0;
 
   uint32_t nLength = atoi(buffer);
 
   char *jsonstring = malloc(nLength+1);
-  r = read(cryservfd, jsonstring, nLength);
+  r = read(cryserv->socket, jsonstring, nLength);
   if(r != nLength) return NULL;
 
-  r = read(cryservfd, &c, 1); //Read comma
+  r = read(cryserv->socket, &c, 1); //Read comma
   if(r != 1) return NULL;
-  
-  json_object *json_result = json_tokener_parse(jsonstring);
+  if(c != ',') return NULL;
+ 
+  json_object *json_from_read = json_tokener_parse(jsonstring);
   free(jsonstring);
-  return json_result;
+
+  printf("Message received: %s\n", json_object_get_string(json_from_read));
+  
+  json_object *id;
+  if(json_object_object_get_ex(json_from_read, "id", &id) == FALSE) {
+    fprintf(stderr, "Cryptol service id missing\n");
+    json_object_put(json_from_read);
+    return NULL;
+  }
+ 
+  if(json_object_get_int(cryserv->id) != json_object_get_int(id)) {
+    fprintf(stderr, "Cryptol service id mismatch\n");
+    json_object_put(json_from_read);
+    return NULL;
+  }
+
+  if(json_object_object_get_ex(json_from_read, "error", NULL) == TRUE) {
+    //return the error
+    return json_from_read;
+  }
+  
+  json_object *result;
+  if(json_object_object_get_ex(json_from_read, "result", &result) == FALSE) {
+    fprintf(stderr, "Cryptol service result missing\n");
+    return NULL;
+  }
+  json_object_get(result);
+  json_object_put(json_from_read);
+
+  //Test to see if a new state is returned
+  if(json_object_object_get_ex(result, "state", NULL) == TRUE) {
+    //decrement reference count of old state
+    json_object_put(cryserv->state);
+    //save new state
+    json_object_object_get_ex(result, "state", &cryserv->state);
+  }
+
+  //increment reference count of new state
+  json_object_get(cryserv->state);
+
+  //increment id
+  json_object_put(cryserv->id);
+  cryserv->id = json_object_new_int(json_object_get_int(id) + 1);
+
+  return result;
+}
+
+void cryptol_service_load_module(cryptol_service_t *cryserv, char *module_name) {
+  json_object *message = json_object_new_object();
+
+  json_object *params = json_object_new_object();
+  json_object_object_add(message, "params", params);
+  
+  json_object_object_add(message, "method", json_object_new_string("load module"));
+  
+  json_object_object_add(params, "module name", json_object_new_string(module_name));
+
+  cryptol_service_send(cryserv, message);
+
+  json_object *json_result = cryptol_service_read(cryserv);
+  json_object_put(json_result); //free result
 }
