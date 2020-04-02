@@ -1,0 +1,3 @@
+[submodule "lib/bitvector"]
+	path = lib/bitvector
+	url = https://github.com/weaversa/bitvector
