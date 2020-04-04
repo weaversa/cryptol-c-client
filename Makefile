@@ -17,7 +17,7 @@ CFLAGS = -std=gnu99 $(DBG) $(OPT) $(INCLUDES)
 AR = ar r
 RANLIB = ranlib
 
-all: depend lib/lib$(CRYPTOLCCLIENTLIB).a
+all: depend lib/bitvector/lib/libbitvector.a lib/lib$(CRYPTOLCCLIENTLIB).a
 
 depend: .depend
 .depend: $(SOURCES)
@@ -32,15 +32,19 @@ endif
 	@rm -f .depend.bak
 -include .depend
 
+lib/bitvector/lib/libbitvector.a:
+	@cd lib/bitvector && $(MAKE)
+
 $(OBJECTS): obj/%.o : src/%.c Makefile
 	@echo "Compiling "$<""
 	@[ -d obj ] || mkdir -p obj
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-lib/lib$(CRYPTOLCCLIENTLIB).a: $(OBJECTS) Makefile
+lib/lib$(CRYPTOLCCLIENTLIB).a: $(OBJECTS) Makefile lib/bitvector/lib/libbitvector.a
 	@echo "Creating "$@""
 	@[ -d lib ] || mkdir -p lib
 	@rm -f $@
+	@cp lib/bitvector/lib/libbitvector.a $@
 	@$(AR) $@ $(OBJECTS)
 	@$(RANLIB) $@
 
@@ -48,6 +52,7 @@ test/test: test/test.c lib/lib$(CRYPTOLCCLIENTLIB).a
 	$(CC) $(CFLAGS) $(LDFLAGS) test/test.c -o test/test $(LIBS)
 
 clean:
+	cd lib/bitvector && $(MAKE) clean
 	rm -rf *~ */*~ $(OBJECTS) ./.depend test/test *.dSYM test/test.dSYM lib/lib$(CRYPTOLCCLIENTLIB).a obj
 
 edit:

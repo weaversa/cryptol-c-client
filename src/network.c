@@ -155,3 +155,84 @@ void cryptol_service_load_module(cryptol_service_t *cryserv, char *module_name) 
   json_object *json_result = cryptol_service_read(cryserv);
   json_object_put(json_result); //free result
 }
+
+/*
+{ "answer":  
+  { "value": 
+    { "expression": "sequence",
+      "data":
+      [ { "expression": "sequence",
+          "data":
+            [ { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" } ],
+        },  
+	{ "expression": "sequence",
+          "data":
+            [ { "data": "23", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "ab", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "23", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "ab", "width": 8, "expression": "bits", "encoding": "hex" } ], 
+	},  
+        { "expression": "sequence",
+          "data":
+            [ { "data": "45", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "cd", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "45", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "cd", "width": 8, "expression": "bits", "encoding": "hex" } ], 
+        },  
+        { "expression": "sequence", 
+          "data":
+            [ { "data": "67", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "ef", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "67", "width": 8, "expression": "bits", "encoding": "hex" },
+              { "data": "ef", "width": 8, "expression": "bits", "encoding": "hex" } ], 
+        } ],
+    },  
+    "type string": "Primitive::Symmetric::Cipher::Block::AES::State", 
+    "type": { "propositions": [ ],
+              "forall": [ ],
+              "type": { "type": "sequence",
+                        "length": { "value": 4, "type": "number" },
+                        "contents": { "type": "sequence",
+                                      "length": { "value": 4, "type": "number" }, 
+                                      "contents": { "width": { "value": 8, "type": "number" },
+                                                    "type": "bitvector"
+                                                  },
+                                    },
+                      }
+            }
+  }
+}
+*/
+
+json_object *caas_bitvector(bitvector_t *bv) {
+  char *hex;
+
+  if(bv == NULL) return NULL;
+
+  json_object *jbv = json_object_new_object();
+  json_object_object_add(jbv, "expression", json_object_new_string("bits"));
+  json_object_object_add(jbv, "encoding", json_object_new_string("hex"));
+  json_object_object_add(jbv, "data", json_object_new_string(hex=bitvector_t_toHexString(bv))); free(hex);
+  json_object_object_add(jbv, "width", json_object_new_int(bv->nBits));
+
+  return jbv;
+}
+
+json_object *caas_sequence(sequence_t *seq) {
+  if(seq == NULL) return NULL;
+
+  json_object *jseq = json_object_new_object();
+  json_object_object_add(jseq, "expression", json_object_new_string("sequence"));
+
+  json_object *data = json_object_new_array();
+  uint32_t i;
+  for(i = 0; i < seq->nLength; i++) {
+    json_object_array_add(data, caas_bitvector(&seq->pList[i]));
+  }
+  json_object_object_add(jseq, "data", data);
+  
+  return jseq;  
+}

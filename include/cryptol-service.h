@@ -7,6 +7,8 @@
 #include <string.h> 
 #include <json-c/json.h>
 
+#include "../lib/bitvector/include/bitvector.h"
+
 #include "network.h"
 
 
