@@ -1,22 +1,24 @@
-#ifndef CRYSRV_NETWORK_H
-#define CRYSRV_NETWORK_H
+#ifndef CAAS_NETWORK_H
+#define CAAS_NETWORK_H
 
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
 #include <unistd.h> 
 #include <math.h>
 
-typedef struct cryptol_service_t {
+typedef struct caas_t {
   int socket;
   json_object *state;
   json_object *id;
-} cryptol_service_t;
+} caas_t;
 
-cryptol_service_t *cryptol_service_connect(char ip_address[16], uint32_t port);
-void cryptol_service_disconnect(cryptol_service_t *cryserv);
-void cryptol_service_send(cryptol_service_t *cryserv, json_object *msg);
-json_object *cryptol_service_read(cryptol_service_t *cryserv);
+caas_t *caas_connect(char ip_address[16], uint32_t port);
+void caas_disconnect(caas_t *cryserv);
+void caas_send(caas_t *cryserv, json_object *msg);
+json_object *caas_read(caas_t *cryserv);
 
-void cryptol_service_load_module(cryptol_service_t *cryserv, char *module_name);
+void caas_load_module(caas_t *cryserv, char *module_name);
+
+
 
 #endif

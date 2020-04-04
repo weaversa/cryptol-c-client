@@ -10,10 +10,10 @@ int main(int argc, char const *argv[]) {
   strncpy(ip_address, argv[1], 16);
   uint32_t port = atoi(argv[2]);
   
-  cryptol_service_t *cryserv = cryptol_service_connect(ip_address, port);
-  if(cryserv == NULL) return 0;
+  caas_t *caas = caas_connect(ip_address, port);
+  if(caas == NULL) return 0;
 
-  cryptol_service_load_module(cryserv, "Primitive::Symmetric::Cipher::Block::AES");
+  caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
 
   json_object *msg = json_object_new_object();
   json_object_object_add(msg, "method", json_object_new_string("evaluate expression"));
@@ -38,12 +38,12 @@ int main(int argc, char const *argv[]) {
   json_object_object_add(arg0, "data", json_object_new_string("0123456789abcdef0123456789abcdef"));
   json_object_object_add(arg0, "width", json_object_new_int(128));
 
-  cryptol_service_send(cryserv, msg);
+  caas_send(caas, msg);
   
-  json_object *json_result = cryptol_service_read(cryserv);
+  json_object *json_result = caas_read(caas);
   json_object_put(json_result); //free result
 
-  cryptol_service_disconnect(cryserv);
+  caas_disconnect(caas);
   
   return 0;
 }
