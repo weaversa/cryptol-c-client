@@ -14,7 +14,13 @@ int main(int argc, char const *argv[]) {
   if(caas == NULL) return 0;
 
   caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
+  
+  json_object *jresult =
+    caas_evaluate_expression(caas,
+			     caas_call("msgToState",
+				       caas_add_argument(NULL, caas_hex("0123456789abcdef0123456789abcdef", 128))));
 
+  /*
   json_object *msg = json_object_new_object();
   json_object_object_add(msg, "method", json_object_new_string("evaluate expression"));
 
@@ -30,6 +36,9 @@ int main(int argc, char const *argv[]) {
   json_object *arguments = json_object_new_array();
   json_object_object_add(expression, "arguments", arguments);
 
+  json_object_array_add(arguments, caas_hex("0123456789abcdef0123456789abcdef", 128));
+  */
+  /*  
   json_object *arg0 = json_object_new_object();
   json_object_array_add(arguments, arg0);
 
@@ -37,11 +46,12 @@ int main(int argc, char const *argv[]) {
   json_object_object_add(arg0, "encoding", json_object_new_string("hex"));
   json_object_object_add(arg0, "data", json_object_new_string("0123456789abcdef0123456789abcdef"));
   json_object_object_add(arg0, "width", json_object_new_int(128));
+  */
 
-  caas_send(caas, msg);
+  //caas_send(caas, msg);
   
-  json_object *json_result = caas_read(caas);
-  json_object_put(json_result); //free result
+  //json_object *jresult = caas_read(caas);
+  json_object_put(jresult); //free result
 
   caas_disconnect(caas);
   

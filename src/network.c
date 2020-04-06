@@ -1,5 +1,9 @@
 #include "cryptol-service.h"
 
+/**
+ * Create a connection to a remote Cryptol service
+ **/
+
 caas_t *caas_connect(char ip_address[16], uint32_t port) {
   caas_t *caas = malloc(sizeof(caas_t));
   struct sockaddr_in caas_addr;
@@ -31,6 +35,11 @@ caas_t *caas_connect(char ip_address[16], uint32_t port) {
   return caas;
 }
 
+
+/**
+ * Disconnect from a remote Cryptol service
+ **/
+
 void caas_disconnect(caas_t *caas) {
   close(caas->socket);
   json_object_put(caas->state);
@@ -39,10 +48,21 @@ void caas_disconnect(caas_t *caas) {
   free(caas);
 }
 
+
+/**
+ * Count the number of digits in a decimal integer
+ **/
+
 int numPlaces (int n) {
   if (n == 0) return 1;
   return floor (log10 (abs (n))) + 1;
 }
+
+
+/**
+ * Send a JSON formatted message to a remote Cryptol service
+ * The message is consumed.
+ **/
 
 void caas_send(caas_t *caas, json_object *message) {
   json_object_object_add(message, "jsonrpc", json_object_new_string("2.0"));
@@ -68,6 +88,11 @@ void caas_send(caas_t *caas, json_object *message) {
   free(netstring);
   json_object_put(message); //free message and all referenced objects
 }
+
+
+/**
+ * Received a JSON formatted message from a remote Cryptol service
+ **/
 
 json_object *caas_read(caas_t *caas) {
   char c = 0;
@@ -140,6 +165,13 @@ json_object *caas_read(caas_t *caas) {
   return result;
 }
 
+
+/**
+ * Request the remote Cryptol service to load a particular
+ * module. Akin to:
+ * > :m 'module_name'
+ **/
+
 void caas_load_module(caas_t *caas, char *module_name) {
   json_object *message = json_object_new_object();
 
@@ -152,8 +184,8 @@ void caas_load_module(caas_t *caas, char *module_name) {
 
   caas_send(caas, message);
 
-  json_object *json_result = caas_read(caas);
-  json_object_put(json_result); //free result
+  json_object *jresult = caas_read(caas);
+  json_object_put(jresult); //free result
 }
 
 /*
@@ -207,19 +239,44 @@ void caas_load_module(caas_t *caas, char *module_name) {
 }
 */
 
-json_object *caas_bitvector(bitvector_t *bv) {
-  char *hex;
 
-  if(bv == NULL) return NULL;
+/**
+ * Create a JSON bit expression from a string of hex characters.
+ * Types of the form : {a} (fin a) => [a]
+ **/
+
+json_object *caas_hex(char *hex, uint32_t nBits) {
+  if(hex == NULL) return NULL;
 
   json_object *jbv = json_object_new_object();
   json_object_object_add(jbv, "expression", json_object_new_string("bits"));
   json_object_object_add(jbv, "encoding", json_object_new_string("hex"));
-  json_object_object_add(jbv, "data", json_object_new_string(hex=bitvector_t_toHexString(bv))); free(hex);
-  json_object_object_add(jbv, "width", json_object_new_int(bv->nBits));
+  json_object_object_add(jbv, "data", json_object_new_string(hex));
+  json_object_object_add(jbv, "width", json_object_new_int(nBits));
 
   return jbv;
 }
+
+
+/**
+ * Create a JSON bit expression from a bitvector_t.
+ * Types of the form : {a} (fin a) => [a]
+ **/
+
+json_object *caas_bitvector(bitvector_t *bv) {
+  if(bv == NULL) return NULL;
+
+  char *hex=bitvector_t_toHexString(bv);
+  json_object *jbv = caas_hex(hex, bv->nBits);
+  free(hex);
+
+  return jbv;
+}
+
+/**
+ * Create a JSON sequence expression from a sequence_t.
+ * Types of the form : {a, b} (fin a, b) => [a][b]
+ **/
 
 json_object *caas_sequence(sequence_t *seq) {
   if(seq == NULL) return NULL;
@@ -228,11 +285,141 @@ json_object *caas_sequence(sequence_t *seq) {
   json_object_object_add(jseq, "expression", json_object_new_string("sequence"));
 
   json_object *data = json_object_new_array();
+  json_object_object_add(jseq, "data", data);
+  
   uint32_t i;
   for(i = 0; i < seq->nLength; i++) {
     json_object_array_add(data, caas_bitvector(&seq->pList[i]));
   }
-  json_object_object_add(jseq, "data", data);
   
   return jseq;  
+}
+
+
+/**
+ * Split a JSON sequence expression into 'n' parts.
+ * Consumes the sequence.
+ */
+
+json_object *caas_split(json_object *jseq, uint32_t parts) {
+  if(jseq == NULL) {
+    return NULL;
+  }
+
+  json_object *data;
+  if(json_object_object_get_ex(jseq, "data", &data) == FALSE) {
+    fprintf(stderr, "Error: Sequence missing data array\n");
+    return NULL;
+  }
+  uint32_t nLength = json_object_array_length(data);
+
+  if((nLength == 0) || (nLength % parts != 0)) {
+    fprintf(stderr, "Cannot split a sequence of length %u into %u equal sized parts.\n", nLength, parts);
+    return NULL;
+  }
+
+  json_object *jret = json_object_new_object();
+  json_object_object_add(jret, "expression", json_object_new_string("sequence"));
+  json_object *data_ret = json_object_new_array();
+  json_object_object_add(jret, "data", data_ret);
+  
+  uint32_t i, j;
+  for(i = 0; i < parts; i++) {
+    json_object *jseqi = json_object_new_object();
+    json_object_object_add(jseqi, "expression", json_object_new_string("sequence"));
+    json_object *datai = json_object_new_array();
+    json_object_object_add(jseqi, "data", datai);
+  
+    for(j = 0; j < nLength / parts; j++) {
+      json_object_array_add(datai, json_object_get(json_object_array_get_idx(data, i*(nLength/parts) + j)));
+    }
+    json_object_array_add(data_ret, jseqi);
+  }
+
+  json_object_put(jseq); //free result
+  
+  return jret;
+}
+
+/**
+ * Add an element to a JSON tuple expression (or create one if jtuple
+ * is NULL.
+ * Types of the form : {a} (fin a) => (..., a)
+ **/
+
+json_object *caas_add_to_tuple(json_object *jtuple, json_object *argument) {
+  json_object *data;
+  if(jtuple == NULL) {
+    jtuple = json_object_new_object();
+    json_object_object_add(jtuple, "expression", json_object_new_string("tuple"));
+
+    data = json_object_new_array();
+    json_object_object_add(jtuple, "data", data);
+  } else {
+    if(json_object_object_get_ex(jtuple, "data", &data) == FALSE) {
+      fprintf(stderr, "Error: Tuple missing data array\n");
+      return NULL;
+    }
+  }
+
+  json_object_array_add(data, argument);
+  
+  return jtuple;
+}
+
+
+/**
+ * Add an element to a JSON function's argument expression (or create
+ * one if arguments is NULL.
+ * Types of the form : {a} (fin a) => f ... a
+ **/
+
+json_object *caas_add_argument(json_object *arguments, json_object *argument) {
+  if(arguments == NULL) {
+    arguments = json_object_new_array();
+  }
+
+  json_object_array_add(arguments, argument);
+  
+  return arguments;
+}
+
+
+/**
+ * Create a JSON expression for calling a function.
+ **/
+
+json_object *caas_call(char *name, json_object *arguments) {
+  json_object *jfun = json_object_new_object();
+
+  json_object_object_add(jfun, "expression", json_object_new_string("call"));
+  json_object_object_add(jfun, "function", json_object_new_string(name));
+  
+  json_object_object_add(jfun, "arguments", arguments);
+
+  return jfun;
+}
+
+
+/**
+ * Request the remote Cryptol service to evaluate an expression.
+ * The expression is consumed.
+ **/
+
+json_object *caas_evaluate_expression(caas_t *caas, json_object *expression) {
+  json_object *message = json_object_new_object();
+
+  json_object *params = json_object_new_object();
+  json_object_object_add(message, "params", params);
+  
+  json_object_object_add(message, "method", json_object_new_string("evaluate expression"));
+
+  json_object_object_add(params, "expression", expression);
+  
+  caas_send(caas, message);
+
+  json_object *jresult = caas_read(caas);
+  //json_object_put(jresult); //free result
+
+  return jresult;
 }
