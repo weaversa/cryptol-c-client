@@ -79,7 +79,7 @@ void caas_send(caas_t *caas, json_object *message) {
 
   const char *message_string = json_object_get_string(message);
 
-  uint32_t netstring_size = strlen(message_string) + numPlaces(strlen(message_string)) + 3;
+  size_t netstring_size = strlen(message_string) + numPlaces(strlen(message_string)) + 3;
   char *netstring = malloc(netstring_size);
   snprintf(netstring, netstring_size, "%ld:%s,", strlen(message_string), message_string);
   send(caas->socket, netstring, strlen(netstring), 0);
@@ -239,22 +239,69 @@ void caas_load_module(caas_t *caas, char *module_name) {
 }
 */
 
+/**
+ * Create a JSON boolean expression from a bit
+ * Types of the form : Bit
+ **/
+
+json_object *caas_from_bool(uint8_t bit) {
+  json_object *jbool = json_object_new_boolean(bit);
+  return jbool;
+}
+
 
 /**
- * Create a JSON bit expression from a string of hex characters.
+ * Create a JSON bit expression from a string of hex characters. Do
+ * not prepend '0x'.
  * Types of the form : {a} (fin a) => [a]
  **/
 
-json_object *caas_hex(char *hex, uint32_t nBits) {
+json_object *caas_from_hex(char *hex, uint32_t nBits) {
   if(hex == NULL) return NULL;
 
-  json_object *jbv = json_object_new_object();
-  json_object_object_add(jbv, "expression", json_object_new_string("bits"));
-  json_object_object_add(jbv, "encoding", json_object_new_string("hex"));
-  json_object_object_add(jbv, "data", json_object_new_string(hex));
-  json_object_object_add(jbv, "width", json_object_new_int(nBits));
+  json_object *jhex = json_object_new_object();
+  json_object_object_add(jhex, "expression", json_object_new_string("bits"));
+  json_object_object_add(jhex, "encoding", json_object_new_string("hex"));
+  json_object_object_add(jhex, "data", json_object_new_string(hex));
+  json_object_object_add(jhex, "width", json_object_new_int(nBits));
 
-  return jbv;
+  /*Try instead
+  size_t hex_size = strlen(hex);
+  uint8_t add0x = 0;
+  if(hex_size >= 3) {
+    if(hex[1] != x) {
+      add0x = 1;
+      hex_size+=2; //0x not prepended, add space to prepend
+    }
+  }
+  hex_size++; //Add space for backtick
+
+  char *hextick = malloc(hex_size);
+  //Adding a backtick allows bit precision types.
+  if(add0x) {
+    //prepend `0x
+    snprintf(hextick, hex_size, "`0x%s", hex);
+  } else {
+    //prepend `
+    snprintf(hextick, hex_size, "`%s", hex);
+  }
+
+  json_object *jhex = json_object_new_string(hextick);
+  free(hextick);
+  */
+  
+  return jhex;
+}
+
+
+/**
+ * Create a JSON expression from a string
+ * Essentially: > 'command'
+ **/
+
+json_object *caas_command(char *command) {
+  json_object *jcommand = json_object_new_string(command);
+  return jcommand;
 }
 
 
@@ -263,11 +310,11 @@ json_object *caas_hex(char *hex, uint32_t nBits) {
  * Types of the form : {a} (fin a) => [a]
  **/
 
-json_object *caas_bitvector(bitvector_t *bv) {
+json_object *caas_from_bitvector(bitvector_t *bv) {
   if(bv == NULL) return NULL;
 
   char *hex=bitvector_t_toHexString(bv);
-  json_object *jbv = caas_hex(hex, bv->nBits);
+  json_object *jbv = caas_from_hex(hex, bv->nBits);
   free(hex);
 
   return jbv;
@@ -278,7 +325,7 @@ json_object *caas_bitvector(bitvector_t *bv) {
  * Types of the form : {a, b} (fin a, b) => [a][b]
  **/
 
-json_object *caas_sequence(sequence_t *seq) {
+json_object *caas_from_sequence(sequence_t *seq) {
   if(seq == NULL) return NULL;
 
   json_object *jseq = json_object_new_object();
@@ -289,7 +336,7 @@ json_object *caas_sequence(sequence_t *seq) {
   
   uint32_t i;
   for(i = 0; i < seq->nLength; i++) {
-    json_object_array_add(data, caas_bitvector(&seq->pList[i]));
+    json_object_array_add(data, caas_from_bitvector(&seq->pList[i]));
   }
   
   return jseq;  
@@ -347,7 +394,7 @@ json_object *caas_split(json_object *jseq, uint32_t parts) {
  * Types of the form : {a} (fin a) => (..., a)
  **/
 
-json_object *caas_add_to_tuple(json_object *jtuple, json_object *argument) {
+json_object *caas_add_to_tuple(json_object *jtuple, json_object *value) {
   json_object *data;
   if(jtuple == NULL) {
     jtuple = json_object_new_object();
@@ -362,9 +409,36 @@ json_object *caas_add_to_tuple(json_object *jtuple, json_object *argument) {
     }
   }
 
-  json_object_array_add(data, argument);
+  json_object_array_add(data, value);
   
   return jtuple;
+}
+
+
+/**
+ * Add an element to a JSON record expression (or create one if jrec
+ * is NULL.
+ * Types of the form : {a} (fin a) => {..., field=b)
+ **/
+
+json_object *caas_add_to_record(json_object *jrec, char *field, json_object *value) {
+  json_object *data;
+  if(jrec == NULL) {
+    jrec = json_object_new_object();
+    json_object_object_add(jrec, "expression", json_object_new_string("record"));
+
+    data = json_object_new_object();
+    json_object_object_add(jrec, "data", data);
+  } else {
+    if(json_object_object_get_ex(jrec, "data", &data) == FALSE) {
+      fprintf(stderr, "Error: Record missing data object\n");
+      return NULL;
+    }
+  }
+
+  json_object_object_add(data, field, value);
+  
+  return jrec;
 }
 
 

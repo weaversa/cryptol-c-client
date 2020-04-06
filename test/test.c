@@ -14,12 +14,20 @@ int main(int argc, char const *argv[]) {
   if(caas == NULL) return 0;
 
   caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
-  
+
+  bitvector_t *arg0 = bitvector_t_fromHexString("0123456789abcdef0123456789abcdef");
   json_object *jresult =
     caas_evaluate_expression(caas,
 			     caas_call("msgToState",
-				       caas_add_argument(NULL, caas_hex("0123456789abcdef0123456789abcdef", 128))));
+				       caas_add_argument(NULL, caas_from_bitvector(arg0))));
+  bitvector_t_free(arg0);
 
+  /*Also, This might work as well
+  json_object *jresult =
+    caas_evaluate_expression(caas,
+                             caas_command("msgToState 0x0123456789abcedf0123456789abcedf"));
+  */
+  
   /*
   json_object *msg = json_object_new_object();
   json_object_object_add(msg, "method", json_object_new_string("evaluate expression"));
