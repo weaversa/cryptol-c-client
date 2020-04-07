@@ -21,45 +21,35 @@ int main(int argc, char const *argv[]) {
 			     caas_call("msgToState",
 				       caas_add_argument(NULL, caas_from_bitvector(arg0))));
   bitvector_t_free(arg0);
+  json_object_put(jresult);
 
-  /*Also, This might work as well
-  json_object *jresult =
+  jresult =
     caas_evaluate_expression(caas,
                              caas_command("msgToState 0x0123456789abcedf0123456789abcedf"));
-  */
-  
-  /*
-  json_object *msg = json_object_new_object();
-  json_object_object_add(msg, "method", json_object_new_string("evaluate expression"));
+  json_object_put(jresult);
 
-  json_object *params = json_object_new_object();
-  json_object_object_add(msg, "params", params);
+  jresult =
+    caas_evaluate_expression(caas,
+                             caas_command("7 : [3]"));
+  json_object_put(jresult);
 
-  json_object *expression = json_object_new_object();
-  json_object_object_add(params, "expression", expression);
+  arg0 = bitvector_t_fromHexString("7f");
+  bitvector_t_dropUpdate(arg0, 1);
+  jresult =
+    caas_evaluate_expression(caas,
+			     caas_from_bitvector(arg0));
+  bitvector_t_free(arg0);
+  json_object_put(jresult);
 
-  json_object_object_add(expression, "expression", json_object_new_string("call"));
-  json_object_object_add(expression, "function", json_object_new_string("msgToState"));
-  
-  json_object *arguments = json_object_new_array();
-  json_object_object_add(expression, "arguments", arguments);
+  jresult =
+    caas_evaluate_expression(caas,
+			     caas_from_boolean(1));
+  json_object_put(jresult);
 
-  json_object_array_add(arguments, caas_hex("0123456789abcdef0123456789abcdef", 128));
-  */
-  /*  
-  json_object *arg0 = json_object_new_object();
-  json_object_array_add(arguments, arg0);
-
-  json_object_object_add(arg0, "expression", json_object_new_string("bits"));
-  json_object_object_add(arg0, "encoding", json_object_new_string("hex"));
-  json_object_object_add(arg0, "data", json_object_new_string("0123456789abcdef0123456789abcdef"));
-  json_object_object_add(arg0, "width", json_object_new_int(128));
-  */
-
-  //caas_send(caas, msg);
-  
-  //json_object *jresult = caas_read(caas);
-  json_object_put(jresult); //free result
+  jresult =
+    caas_evaluate_expression(caas,
+			     caas_command("aesEncrypt(`0x1234, `0x5678)"));
+  json_object_put(jresult);
 
   caas_disconnect(caas);
   

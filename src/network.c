@@ -244,7 +244,7 @@ void caas_load_module(caas_t *caas, char *module_name) {
  * Types of the form : Bit
  **/
 
-json_object *caas_from_bool(uint8_t bit) {
+json_object *caas_from_boolean(uint8_t bit) {
   json_object *jbool = json_object_new_boolean(bit);
   return jbool;
 }
@@ -252,7 +252,8 @@ json_object *caas_from_bool(uint8_t bit) {
 
 /**
  * Create a JSON bit expression from a string of hex characters. Do
- * not prepend '0x'.
+ * not prepend '0x'. nBits can be any number --- does not have to be a
+ * multiple of 4 (like it is when using the interpreter directly).
  * Types of the form : {a} (fin a) => [a]
  **/
 
@@ -265,31 +266,6 @@ json_object *caas_from_hex(char *hex, uint32_t nBits) {
   json_object_object_add(jhex, "data", json_object_new_string(hex));
   json_object_object_add(jhex, "width", json_object_new_int(nBits));
 
-  /*Try instead
-  size_t hex_size = strlen(hex);
-  uint8_t add0x = 0;
-  if(hex_size >= 3) {
-    if(hex[1] != x) {
-      add0x = 1;
-      hex_size+=2; //0x not prepended, add space to prepend
-    }
-  }
-  hex_size++; //Add space for backtick
-
-  char *hextick = malloc(hex_size);
-  //Adding a backtick allows bit precision types.
-  if(add0x) {
-    //prepend `0x
-    snprintf(hextick, hex_size, "`0x%s", hex);
-  } else {
-    //prepend `
-    snprintf(hextick, hex_size, "`%s", hex);
-  }
-
-  json_object *jhex = json_object_new_string(hextick);
-  free(hextick);
-  */
-  
   return jhex;
 }
 
