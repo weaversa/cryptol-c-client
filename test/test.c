@@ -1,5 +1,66 @@
 #include "cryptol-service.h"
 
+void rand_str(char *str, uint32_t nLength) {
+  uint32_t i;
+  for(i = 0; i < nLength; i++) {
+    sprintf(str + i, "%x", rand() % 16);
+  }
+}
+
+void AESTest(caas_t *caas) {
+  //Load AES
+  //  caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
+
+  char str[32];
+
+  rand_str(str, 32);
+  bitvector_t *key = bitvector_t_fromHexString(str);
+
+  rand_str(str, 32);
+  bitvector_t *pt = bitvector_t_fromHexString(str);
+  
+  json_object *jresult =
+    caas_evaluate_expression(caas,
+			     caas_call("aesEncrypt", caas_add_argument(NULL, 
+				       caas_add_to_tuple(
+				       caas_add_to_tuple(NULL, caas_from_bitvector(pt)),
+                                                               caas_from_bitvector(key))
+				      ))
+			     );
+  json_object_put(jresult);
+
+  bitvector_t_free(pt);
+  bitvector_t_free(key);
+}
+
+void p512Test(caas_t *caas) {
+  //Load p512
+  caas_load_module(caas, "Primitive::Asymmetric::Signature::ECDSA::p521");
+
+  char str[130];
+  
+  rand_str(str, 130);
+  bitvector_t *d = bitvector_t_fromHexString(str);
+
+  rand_str(str, 130);
+  bitvector_t *msgHash = bitvector_t_fromHexString(str);
+
+  rand_str(str, 130);
+  bitvector_t *k = bitvector_t_fromHexString(str);
+  
+  json_object *jresult =
+  caas_evaluate_expression(caas,
+			   caas_call("sign",
+			             caas_add_argument(
+				     caas_add_argument(
+				     caas_add_argument(NULL, caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(d)))),
+				                             caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(msgHash)))),
+				                             caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(k))))
+  			            )
+			   );
+  json_object_put(jresult);  
+}
+
 int main(int argc, char const *argv[]) { 
   if(argc != 3) {
     fprintf(stderr,"usage %s hostname port\n", argv[0]);
@@ -13,8 +74,9 @@ int main(int argc, char const *argv[]) {
   caas_t *caas = caas_connect(ip_address, port);
   if(caas == NULL) return 0;
 
+  //Load AES
   caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
-
+  
   bitvector_t *arg0 = bitvector_t_fromHexString("0123456789abcdef0123456789abcdef");
   json_object *jresult =
     caas_evaluate_expression(caas,
@@ -51,6 +113,12 @@ int main(int argc, char const *argv[]) {
 			     caas_command("aesEncrypt(`0x1234, `0x5678)"));
   json_object_put(jresult);
 
+  while(1) {
+    AESTest(caas);
+  }
+
+  //  p512Test(caas);
+ 
   caas_disconnect(caas);
   
   return 0;
