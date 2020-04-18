@@ -9,7 +9,7 @@ void rand_str(char *str, uint32_t nLength) {
 
 void AESTest(caas_t *caas) {
   //Load AES
-  //  caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
+  caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
 
   char str[32];
 
@@ -115,10 +115,9 @@ int main(int argc, char const *argv[]) {
 
   while(1) {
     AESTest(caas);
+    p512Test(caas);
   }
-
-  //  p512Test(caas);
- 
+  
   caas_disconnect(caas);
   
   return 0;
