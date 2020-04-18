@@ -167,6 +167,16 @@ json_object *caas_read(caas_t *caas) {
 
 
 /**
+ * Reset the Cryptol state.
+ */
+
+void caas_reset_state(caas_t *caas) {
+  json_object_put(caas->state);
+  caas->state = json_object_new_array();
+}
+
+
+/**
  * Request the remote Cryptol service to load a particular
  * module. Akin to:
  * > :m 'module_name'
@@ -182,6 +192,10 @@ void caas_load_module(caas_t *caas, char *module_name) {
   
   json_object_object_add(params, "module name", json_object_new_string(module_name));
 
+  //Reset the state just prior to sending to avoid unnecessary state
+  //growth.
+  caas_reset_state(caas);
+  
   caas_send(caas, message);
 
   json_object *jresult = caas_read(caas);
