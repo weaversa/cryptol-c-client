@@ -28,7 +28,7 @@ caas_t *caas_connect(char ip_address[16], uint32_t port) {
     return NULL;
   }
 
-  //Initialize a new session -- empty state and id of 0.
+  //Initialize a new session --- empty state and id of 0.
   caas->state = json_object_new_array();
   caas->id = json_object_new_int(0);
   
@@ -310,6 +310,7 @@ json_object *caas_from_bitvector(bitvector_t *bv) {
   return jbv;
 }
 
+
 /**
  * Create a JSON sequence expression from a sequence_t.
  * Types of the form : {a, b} (fin a, b) => [a][b]
@@ -330,6 +331,88 @@ json_object *caas_from_sequence(sequence_t *seq) {
   }
   
   return jseq;  
+}
+
+
+/**
+ * Create a Cryptol-formatted string from a bitvector_t.
+ * This will produce, for example, (`0x1234:[15])
+ **/
+
+char *bitvector_t_toCryptolString(bitvector_t *bv) {
+  char *hex_string = bitvector_t_toHexString(bv);
+  if(hex_string == NULL) return NULL;
+  
+  uint32_t length = strlen(hex_string);
+  length += numPlaces(bv->nBits);
+  length += 9; //9 extra characters --- "(`0x:[])" + '\0' character
+
+  char *ret_string = malloc(length);
+
+  snprintf(ret_string, length, "(`0x%s:[%u])", hex_string, bv->nBits);
+  free(hex_string);
+  
+  return ret_string;
+}
+
+
+/**
+ * Create a Cryptol-formatted sequence from a sequence_t.
+ * This will produce, for example, ([`0x1234,`0xabcd]:[2][15])
+ **/
+
+char *sequence_t_toCryptolString(sequence_t *sequence) {
+  uint32_t i, length = 0;
+  char **bvs = malloc(sequence->nLength);
+  for(i = 0; i < sequence->nLength; i++) {
+    bvs[i] = bitvector_t_toHexString(&sequence->pList[i]);
+    if(bvs[i] == NULL) { //Some problem, free all previous strings
+      uint32_t j;
+      for(j = 0;j < i; j++) {
+	free(bvs[j]);
+      }
+      free(bvs);
+      return NULL;
+    }
+    length += strlen(bvs[i]) + 4; //4 extra characters ---  ",`0x"
+  }
+  //Subtract one comma
+  length--;
+  length += numPlaces(sequence->pList[0].nBits);
+  length += numPlaces(sequence->nLength);
+  length += 10; //10 extra characters --- "([]:[][])" + '\0' character
+  
+  char *ret_string = malloc(length);
+
+  snprintf(ret_string, length, "([");
+
+  for(i = 0; i < sequence->nLength; i++) {
+    strcat(ret_string, "`0x");
+    strcat(ret_string, bvs[i]);
+    if(i + 1 < sequence->nLength) {
+      strcat(ret_string, ",");
+    }
+  }
+  strcat(ret_string, "]");
+
+  for(i = 0; i < sequence->nLength; i++) {
+    free(bvs[i]);
+  }
+  free(bvs);
+  
+  length = numPlaces(sequence->pList[0].nBits);
+  length += numPlaces(sequence->nLength);
+  length += 6; //6 extra characters --- ":[][]" + '\0' character
+  char *type_string = malloc(length);
+
+  snprintf(type_string, length, ":[%u][%zu]", sequence->pList[0].nBits, sequence->nLength);
+
+  strcat(ret_string, type_string);
+  strcat(ret_string, ")");
+
+  free(type_string);
+  
+  return ret_string;
 }
 
 
