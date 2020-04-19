@@ -17,6 +17,8 @@ void caas_disconnect(caas_t *cryserv);
 void caas_send(caas_t *cryserv, json_object *msg);
 json_object *caas_read(caas_t *cryserv);
 
+bitvector_t *caas_bitvector_from_bits(json_object *jbv);
+
 void caas_reset_state(caas_t *caas);
 void caas_load_module(caas_t *cryserv, char *module_name);
 json_object *caas_from_boolean(uint8_t bit);

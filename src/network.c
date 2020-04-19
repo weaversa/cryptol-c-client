@@ -167,6 +167,59 @@ json_object *caas_read(caas_t *caas) {
 
 
 /**
+ * Create a bitvector_t from a json expression.
+ * Sample input ---
+ *   { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" }
+ **/
+
+bitvector_t *caas_bitvector_from_bits(json_object *jbv) {
+  json_object *expression, *encoding, *data, *width;
+
+  //Check for correct expression tag
+  if(json_object_object_get_ex(jbv, "expression", &expression) == FALSE) {
+    fprintf(stderr, "Missing 'expression' tag\n");
+    return NULL;
+  }
+  if(strcmp(json_object_get_string(expression), "bits") != 0) {
+    fprintf(stderr, "'expression' field not \"bits\"\n");
+    return NULL;
+  }
+
+  //Check for correct encoding tag
+  if(json_object_object_get_ex(jbv, "encoding", &encoding) == FALSE) {
+    fprintf(stderr, "Missing 'encoding' field\n");
+    return NULL;
+  }
+  if(strcmp(json_object_get_string(encoding), "hex") != 0) {
+    fprintf(stderr, "'encoding' field not \"hex\"\n");
+    return NULL;
+  }
+
+  //Get data
+  if(json_object_object_get_ex(jbv, "data", &data) == FALSE) {
+    fprintf(stderr, "Missing 'data' field\n");
+    return NULL;
+  }
+  
+  //Get width
+  if(json_object_object_get_ex(jbv, "width", &width) == FALSE) {
+    fprintf(stderr, "Missing 'width' field\n");
+    return NULL;
+  }
+
+  bitvector_t *ret_bv = bitvector_t_fromHexString((char *)json_object_get_string(data));
+  uint32_t nBits = json_object_get_int(width);
+  if(nBits > ret_bv->nBits) {
+    bitvector_t_widenUpdate(ret_bv, nBits - ret_bv->nBits);
+  } else if(nBits < ret_bv->nBits) {
+    bitvector_t_dropUpdate(ret_bv, ret_bv->nBits - nBits);
+  } //Else, number of bits are equal
+
+  return ret_bv;  
+}
+
+
+/**
  * Reset the Cryptol state.
  */
 
@@ -392,23 +445,19 @@ char *sequence_t_toCryptolString(sequence_t *sequence) {
     if(i + 1 < sequence->nLength) {
       strcat(ret_string, ",");
     }
-  }
-  strcat(ret_string, "]");
-
-  for(i = 0; i < sequence->nLength; i++) {
     free(bvs[i]);
   }
+  strcat(ret_string, "]");
   free(bvs);
   
   length = numPlaces(sequence->pList[0].nBits);
   length += numPlaces(sequence->nLength);
-  length += 6; //6 extra characters --- ":[][]" + '\0' character
+  length += 6; //7 extra characters --- ":[][])" + '\0' character
   char *type_string = malloc(length);
 
-  snprintf(type_string, length, ":[%u][%zu]", sequence->pList[0].nBits, sequence->nLength);
+  snprintf(type_string, length, ":[%u][%zu])", sequence->pList[0].nBits, sequence->nLength);
 
   strcat(ret_string, type_string);
-  strcat(ret_string, ")");
 
   free(type_string);
   
