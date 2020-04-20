@@ -50,13 +50,11 @@ void p512Test(caas_t *caas) {
   
   json_object *jresult =
   caas_evaluate_expression(caas,
-			     caas_call("ZtoBV", caas_add_argument(NULL, 
-			       caas_call("sign",  caas_add_argument(caas_add_argument(caas_add_argument(NULL,
-			         caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(d)))),
-			         caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(msgHash)))),
-  			         caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(k))))
-			       )
-			     ))
+			     caas_call("sign",  caas_add_argument(caas_add_argument(caas_add_argument(NULL,
+			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(d)))),
+			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(msgHash)))),
+  			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(k))))
+			     )
 			   );
   json_object_put(jresult);  
 }
@@ -115,7 +113,7 @@ int main(int argc, char const *argv[]) {
 
   while(1) {
     AESTest(caas);
-    p512Test(caas);
+    //p512Test(caas);
   }
   
   caas_disconnect(caas);
