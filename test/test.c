@@ -13,6 +13,8 @@ void bvTest() {
   rand_str(str, 32);
   bitvector_t *a = bitvector_t_fromHexString(str);
 
+  bitvector_t_widenUpdate(a, rand()%8);
+  
   json_object *aj = caas_from_bitvector(a);
 
   bitvector_t *b = caas_bitvector_from_bits(aj);
