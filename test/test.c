@@ -7,6 +7,23 @@ void rand_str(char *str, uint32_t nLength) {
   }
 }
 
+void bvTest() {
+  char str[32];
+
+  rand_str(str, 32);
+  bitvector_t *a = bitvector_t_fromHexString(str);
+
+  json_object *aj = caas_from_bitvector(a);
+
+  bitvector_t *b = caas_bitvector_from_bits(aj);
+  json_object_put(aj);
+
+  fprintf(stdout, "a==b ? %u\n", bitvector_t_equal(a, b));
+
+  bitvector_t_free(a);
+  bitvector_t_free(b);
+}
+
 void AESTest(caas_t *caas) {
   //Load AES
   caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
@@ -113,6 +130,7 @@ int main(int argc, char const *argv[]) {
 
   while(1) {
     AESTest(caas);
+    bvTest();
     //p512Test(caas);
   }
   
