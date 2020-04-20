@@ -456,7 +456,7 @@ char *sequence_t_toCryptolString(sequence_t *sequence) {
   length += 6; //7 extra characters --- ":[][])" + '\0' character
   char *type_string = malloc(length);
 
-  snprintf(type_string, length, ":[%u][%zu])", sequence->pList[0].nBits, sequence->nLength);
+  snprintf(type_string, length, ":[%zu][%u])", sequence->nLength, sequence->pList[0].nBits);
 
   strcat(ret_string, type_string);
 
