@@ -173,7 +173,7 @@ json_object *caas_read(caas_t *caas) {
  *   { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" }
  **/
 
-bitvector_t *caas_bitvector_from_bits(json_object *jbv) {
+bitvector_t *caas_bitvector_t_from_bits(json_object *jbv) {
   json_object *expression, *encoding, *data, *width;
 
   //Check for correct expression tag
@@ -354,7 +354,7 @@ json_object *caas_command(char *command) {
  * Types of the form : {a} (fin a) => [a]
  **/
 
-json_object *caas_from_bitvector(bitvector_t *bv) {
+json_object *caas_from_bitvector_t(bitvector_t *bv) {
   if(bv == NULL) return NULL;
 
   char *hex=bitvector_t_toHexString(bv);
@@ -370,7 +370,7 @@ json_object *caas_from_bitvector(bitvector_t *bv) {
  * Types of the form : {a, b} (fin a, b) => [a][b]
  **/
 
-json_object *caas_from_sequence(sequence_t *seq) {
+json_object *caas_from_sequence_t(sequence_t *seq) {
   if(seq == NULL) return NULL;
 
   json_object *jseq = json_object_new_object();
@@ -381,7 +381,7 @@ json_object *caas_from_sequence(sequence_t *seq) {
   
   uint32_t i;
   for(i = 0; i < seq->nLength; i++) {
-    json_object_array_add(data, caas_from_bitvector(&seq->pList[i]));
+    json_object_array_add(data, caas_from_bitvector_t(&seq->pList[i]));
   }
   
   return jseq;  

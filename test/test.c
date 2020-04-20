@@ -16,9 +16,9 @@ void bvTest(caas_t *caas) {
 
   bitvector_t_widenUpdate(a, rand()%8);
   
-  json_object *aj = caas_from_bitvector(a);
+  json_object *aj = caas_from_bitvector_t(a);
 
-  bitvector_t *b = caas_bitvector_from_bits(aj);
+  bitvector_t *b = caas_bitvector_t_from_bits(aj);
   json_object_put(aj);
 
   uint8_t equal = bitvector_t_equal(a, b);
@@ -63,8 +63,8 @@ void AESTest(caas_t *caas) {
     caas_evaluate_expression(caas,
 			     caas_call("aesEncrypt", caas_add_argument(NULL, 
 				       caas_add_to_tuple(
-				       caas_add_to_tuple(NULL, caas_from_bitvector(pt)),
-                                                               caas_from_bitvector(key))
+				       caas_add_to_tuple(NULL, caas_from_bitvector_t(pt)),
+                                                               caas_from_bitvector_t(key))
 				      ))
 			     );
   json_object_put(jresult);
@@ -97,9 +97,9 @@ void p512Test(caas_t *caas) {
   json_object *jresult =
   caas_evaluate_expression(caas,
 			     caas_call("sign",  caas_add_argument(caas_add_argument(caas_add_argument(NULL,
-			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(d)))),
-			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(msgHash)))),
-  			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(k))))
+			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector_t(d)))),
+			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector_t(msgHash)))),
+  			       caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector_t(k))))
 			     )
 			   );
   json_object_put(jresult);  
@@ -125,7 +125,7 @@ int main(int argc, char const *argv[]) {
   json_object *jresult =
     caas_evaluate_expression(caas,
 			     caas_call("msgToState",
-				       caas_add_argument(NULL, caas_from_bitvector(arg0))));
+				       caas_add_argument(NULL, caas_from_bitvector_t(arg0))));
   bitvector_t_free(arg0);
   json_object_put(jresult);
 
@@ -143,7 +143,7 @@ int main(int argc, char const *argv[]) {
   bitvector_t_dropUpdate(arg0, 1);
   jresult =
     caas_evaluate_expression(caas,
-			     caas_from_bitvector(arg0));
+			     caas_from_bitvector_t(arg0));
   bitvector_t_free(arg0);
   json_object_put(jresult);
 
