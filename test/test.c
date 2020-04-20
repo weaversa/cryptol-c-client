@@ -47,15 +47,17 @@ void bvTest(caas_t *caas) {
   
   json_object_put(jresult);
 
-  uint32_t i;
-  for(i = 0; i < seq->nLength; i++) {
-    equal = bitvector_t_equal(&seq->pList[i], &seq_val->pList[i]);
-    fprintf(stdout, "a%u==b%u ? %u\n", i, i, equal);
-    assert(equal == 1);
+  if(seq_val != NULL) {
+    uint32_t i;
+    for(i = 0; i < seq->nLength; i++) {
+      equal = bitvector_t_equal(&seq->pList[i], &seq_val->pList[i]);
+      fprintf(stdout, "a%u==b%u ? %u\n", i, i, equal);
+      assert(equal == 1);
+    }
+    sequence_t_free(seq_val, bitvector_t_free_inner);
   }
-  
+
   sequence_t_free(seq, bitvector_t_free_inner);
-  sequence_t_free(seq_val, bitvector_t_free_inner);
 }
 
 void AESTest(caas_t *caas) {
