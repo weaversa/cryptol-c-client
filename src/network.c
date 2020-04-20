@@ -327,58 +327,9 @@ void caas_load_module(caas_t *caas, char *module_name) {
 
   json_object *jresult = caas_read(caas);
   json_object_put(jresult); //free result
+  //Should return success or failure
 }
 
-/*
-{ "answer":  
-  { "value": 
-    { "expression": "sequence",
-      "data":
-      [ { "expression": "sequence",
-          "data":
-            [ { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" } ],
-        },  
-	{ "expression": "sequence",
-          "data":
-            [ { "data": "23", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ab", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "23", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ab", "width": 8, "expression": "bits", "encoding": "hex" } ], 
-	},  
-        { "expression": "sequence",
-          "data":
-            [ { "data": "45", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "cd", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "45", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "cd", "width": 8, "expression": "bits", "encoding": "hex" } ], 
-        },  
-        { "expression": "sequence", 
-          "data":
-            [ { "data": "67", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ef", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "67", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ef", "width": 8, "expression": "bits", "encoding": "hex" } ], 
-        } ],
-    },  
-    "type string": "Primitive::Symmetric::Cipher::Block::AES::State", 
-    "type": { "propositions": [ ],
-              "forall": [ ],
-              "type": { "type": "sequence",
-                        "length": { "value": 4, "type": "number" },
-                        "contents": { "type": "sequence",
-                                      "length": { "value": 4, "type": "number" }, 
-                                      "contents": { "width": { "value": 8, "type": "number" },
-                                                    "type": "bitvector"
-                                                  },
-                                    },
-                      }
-            }
-  }
-}
-*/
 
 /**
  * Create a JSON boolean expression from a bit
