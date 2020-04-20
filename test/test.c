@@ -33,6 +33,7 @@ void AESTest(caas_t *caas) {
   //Load AES
   caas_load_module(caas, "Primitive::Symmetric::Cipher::Block::AES");
 
+  //1st test
   char str[32];
 
   rand_str(str, 32);
@@ -49,6 +50,12 @@ void AESTest(caas_t *caas) {
                                                                caas_from_bitvector(key))
 				      ))
 			     );
+  json_object_put(jresult);
+
+  //2nd test
+  char command[300];
+  snprintf(command, 256+15, "aesEncrypt(%s, %s)", bitvector_t_toCryptolString(pt), bitvector_t_toCryptolString(key));
+  jresult = caas_evaluate_expression(caas, caas_command(command));
   json_object_put(jresult);
 
   bitvector_t_free(pt);
