@@ -168,6 +168,29 @@ json_object *caas_read(caas_t *caas) {
 
 
 /**
+ * Get the 'value' tag of a json result
+ **/
+
+json_object *caas_get_value(json_object *jresult) {
+  json_object *answer, *value;
+
+  //Check for correct answer tag
+  if(json_object_object_get_ex(jresult, "answer", &answer) == FALSE) {
+    fprintf(stderr, "Missing 'answer' tag\n");
+    return NULL;
+  }
+
+    //Check for correct value tag
+  if(json_object_object_get_ex(answer, "value", &value) == FALSE) {
+    fprintf(stderr, "Missing 'value' tag\n");
+    return NULL;
+  }
+  
+  return value;  
+}
+
+
+/**
  * Create a bitvector_t from a json expression.
  * Sample input ---
  *   { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" }
@@ -182,29 +205,29 @@ bitvector_t *caas_bitvector_t_from_bits(json_object *jbv) {
     return NULL;
   }
   if(strcmp(json_object_get_string(expression), "bits") != 0) {
-    fprintf(stderr, "'expression' field not \"bits\"\n");
+    fprintf(stderr, "'expression' tag not \"bits\"\n");
     return NULL;
   }
 
   //Check for correct encoding tag
   if(json_object_object_get_ex(jbv, "encoding", &encoding) == FALSE) {
-    fprintf(stderr, "Missing 'encoding' field\n");
+    fprintf(stderr, "Missing 'encoding' tag\n");
     return NULL;
   }
   if(strcmp(json_object_get_string(encoding), "hex") != 0) {
-    fprintf(stderr, "'encoding' field not \"hex\"\n");
+    fprintf(stderr, "'encoding' tag not \"hex\"\n");
     return NULL;
   }
 
   //Get data
   if(json_object_object_get_ex(jbv, "data", &data) == FALSE) {
-    fprintf(stderr, "Missing 'data' field\n");
+    fprintf(stderr, "Missing 'data' tag\n");
     return NULL;
   }
   
   //Get width
   if(json_object_object_get_ex(jbv, "width", &width) == FALSE) {
-    fprintf(stderr, "Missing 'width' field\n");
+    fprintf(stderr, "Missing 'width' tag\n");
     return NULL;
   }
 
@@ -217,6 +240,56 @@ bitvector_t *caas_bitvector_t_from_bits(json_object *jbv) {
   } //Else, number of bits are equal
 
   return ret_bv;  
+}
+
+
+/**
+ * Create a sequence_t from a json expression.
+ * Sample input ---
+ *   { "expression": "sequence",
+       "data": [ { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
+                 { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" },
+                 { "data": "2" , "width": 8, "expression": "bits", "encoding": "hex" },
+                 { "data": "90", "width": 8, "expression": "bits", "encoding": "hex" }
+               ]
+     }
+ **/
+
+sequence_t *caas_sequence_t_from_sequence(json_object *jseq) {
+  json_object *expression, *data;
+
+  //Check for correct expression tag
+  if(json_object_object_get_ex(jseq, "expression", &expression) == FALSE) {
+    fprintf(stderr, "Missing 'expression' tag\n");
+    return NULL;
+  }
+  if(strcmp(json_object_get_string(expression), "sequence") != 0) {
+    fprintf(stderr, "'expression' tag not \"sequence\"\n");
+    return NULL;
+  }
+
+  //Get data
+  if(json_object_object_get_ex(jseq, "data", &data) == FALSE) {
+    fprintf(stderr, "Missing 'data' tag\n");
+    return NULL;
+  }
+  
+  uint32_t nLength = json_object_array_length(data);
+  sequence_t *seq = sequence_t_alloc(nLength);
+  
+  uint32_t i;
+  for(i = 0; i < nLength; i++) {
+    json_object *datai = json_object_array_get_idx(data, i);
+    bitvector_t *bv = caas_bitvector_t_from_bits(datai);
+    if(bv == NULL) {
+      fprintf(stderr, "Incorrectly formatted json sequence\n");
+      sequence_t_free(seq, bitvector_t_free_inner);
+      return NULL;
+    }
+    sequence_t_push(seq, *bv);
+  }
+
+  return seq;
 }
 
 
@@ -616,7 +689,6 @@ json_object *caas_evaluate_expression(caas_t *caas, json_object *expression) {
   caas_send(caas, message);
 
   json_object *jresult = caas_read(caas);
-  //json_object_put(jresult); //free result
 
   return jresult;
 }

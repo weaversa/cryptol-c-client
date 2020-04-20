@@ -16,8 +16,10 @@ caas_t *caas_connect(char ip_address[16], uint32_t port);
 void caas_disconnect(caas_t *cryserv);
 void caas_send(caas_t *cryserv, json_object *msg);
 json_object *caas_read(caas_t *cryserv);
+json_object *caas_get_value(json_object *jresult);
 
 bitvector_t *caas_bitvector_t_from_bits(json_object *jbv);
+sequence_t *caas_sequence_t_from_sequence(json_object *jseq);
 
 void caas_reset_state(caas_t *caas);
 void caas_load_module(caas_t *cryserv, char *module_name);
