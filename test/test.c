@@ -7,9 +7,10 @@ void rand_str(char *str, uint32_t nLength) {
   }
 }
 
-void bvTest() {
+void bvTest(caas_t *caas) {
   char str[32];
 
+  //1st test
   rand_str(str, 32);
   bitvector_t *a = bitvector_t_fromHexString(str);
 
@@ -27,6 +28,22 @@ void bvTest() {
 
   bitvector_t_free(a);
   bitvector_t_free(b);
+
+  //2nd test  
+  uint32_t nLength = rand()%10;
+  sequence_t *seq = sequence_t_alloc(0);
+
+  for(;nLength > 0; nLength--) {
+    rand_str(str, 32);
+    sequence_t_push(seq, *bitvector_t_fromHexString(str));
+  }
+
+  json_object *jresult =
+    caas_evaluate_expression(caas,
+			     caas_command(sequence_t_toCryptolString(seq)));
+  json_object_put(jresult);
+  
+  sequence_t_free(seq, bitvector_t_free_inner);
 }
 
 void AESTest(caas_t *caas) {
@@ -142,7 +159,7 @@ int main(int argc, char const *argv[]) {
 
   while(1) {
     AESTest(caas);
-    bvTest();
+    bvTest(caas);
     //p512Test(caas);
   }
   
