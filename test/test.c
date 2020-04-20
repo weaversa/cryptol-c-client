@@ -50,14 +50,14 @@ void p512Test(caas_t *caas) {
   
   json_object *jresult =
   caas_evaluate_expression(caas,
-			   caas_call("sign",
-			             caas_add_argument(
-				     caas_add_argument(
-				     caas_add_argument(NULL, caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(d)))),
-				                             caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(msgHash)))),
-				                             caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(k))))
-  			            )
-			   );
+			     caas_call("ZtoBV", caas_add_argument(NULL, 
+			       caas_call("sign",  caas_add_argument(caas_add_argument(caas_add_argument(NULL,
+			         caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(d)))),
+			         caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(msgHash)))),
+			         caas_call("BVtoZ", caas_add_argument(NULL, caas_from_bitvector(k))))
+  			       )
+			     )
+			  );
   json_object_put(jresult);  
 }
 
