@@ -417,7 +417,7 @@ char *bitvector_t_toCryptolString(bitvector_t *bv) {
 
 char *sequence_t_toCryptolString(sequence_t *sequence) {
   uint32_t i, length = 0;
-  char **bvs = malloc(sequence->nLength);
+  char **bvs = malloc(sizeof(char *) * sequence->nLength);
   for(i = 0; i < sequence->nLength; i++) {
     bvs[i] = bitvector_t_toHexString(&sequence->pList[i]);
     if(bvs[i] == NULL) { //Some problem, free all previous strings
