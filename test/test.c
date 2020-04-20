@@ -20,7 +20,10 @@ void bvTest() {
   bitvector_t *b = caas_bitvector_from_bits(aj);
   json_object_put(aj);
 
-  fprintf(stdout, "a==b ? %u\n", bitvector_t_equal(a, b));
+  uint8_t equal = bitvector_t_equal(a, b);
+  fprintf(stdout, "a==b ? %u\n", equal);
+
+  assert(equal == 1);
 
   bitvector_t_free(a);
   bitvector_t_free(b);
