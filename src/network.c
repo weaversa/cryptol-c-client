@@ -145,7 +145,6 @@ json_object *caas_read(caas_t *caas) {
     return NULL;
   }
   json_object_get(result);
-  json_object_put(json_from_read);
 
   //Test to see if a new state is returned
   if(json_object_object_get_ex(result, "state", NULL) == TRUE) {
@@ -161,6 +160,8 @@ json_object *caas_read(caas_t *caas) {
   //increment id
   json_object_put(caas->id);
   caas->id = json_object_new_int(json_object_get_int(id) + 1);
+
+  json_object_put(json_from_read);
 
   return result;
 }
