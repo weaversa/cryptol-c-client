@@ -175,13 +175,13 @@ json_object *caas_get_value(json_object *jresult) {
   json_object *answer, *value;
 
   //Check for correct answer tag
-  if(json_object_object_get_ex(jresult, "answer", &answer) == FALSE) {
+  if(json_object_object_get_ex(jresult, "answer", &answer) == 0) {
     fprintf(stderr, "Missing 'answer' tag\n");
     return NULL;
   }
 
     //Check for correct value tag
-  if(json_object_object_get_ex(answer, "value", &value) == FALSE) {
+  if(json_object_object_get_ex(answer, "value", &value) == 0) {
     fprintf(stderr, "Missing 'value' tag\n");
     return NULL;
   }
@@ -200,7 +200,7 @@ bitvector_t *caas_bitvector_t_from_bits(json_object *jbv) {
   json_object *expression, *encoding, *data, *width;
 
   //Check for correct expression tag
-  if(json_object_object_get_ex(jbv, "expression", &expression) == FALSE) {
+  if(json_object_object_get_ex(jbv, "expression", &expression) == 0) {
     fprintf(stderr, "Missing 'expression' tag\n");
     return NULL;
   }
@@ -210,7 +210,7 @@ bitvector_t *caas_bitvector_t_from_bits(json_object *jbv) {
   }
 
   //Check for correct encoding tag
-  if(json_object_object_get_ex(jbv, "encoding", &encoding) == FALSE) {
+  if(json_object_object_get_ex(jbv, "encoding", &encoding) == 0) {
     fprintf(stderr, "Missing 'encoding' tag\n");
     return NULL;
   }
@@ -220,13 +220,13 @@ bitvector_t *caas_bitvector_t_from_bits(json_object *jbv) {
   }
 
   //Get data
-  if(json_object_object_get_ex(jbv, "data", &data) == FALSE) {
+  if(json_object_object_get_ex(jbv, "data", &data) == 0) {
     fprintf(stderr, "Missing 'data' tag\n");
     return NULL;
   }
   
   //Get width
-  if(json_object_object_get_ex(jbv, "width", &width) == FALSE) {
+  if(json_object_object_get_ex(jbv, "width", &width) == 0) {
     fprintf(stderr, "Missing 'width' tag\n");
     return NULL;
   }
@@ -259,7 +259,7 @@ sequence_t *caas_sequence_t_from_sequence(json_object *jseq) {
   json_object *expression, *data;
 
   //Check for correct expression tag
-  if(json_object_object_get_ex(jseq, "expression", &expression) == FALSE) {
+  if(json_object_object_get_ex(jseq, "expression", &expression) == 0) {
     fprintf(stderr, "Missing 'expression' tag\n");
     return NULL;
   }
@@ -269,7 +269,7 @@ sequence_t *caas_sequence_t_from_sequence(json_object *jseq) {
   }
 
   //Get data
-  if(json_object_object_get_ex(jseq, "data", &data) == FALSE) {
+  if(json_object_object_get_ex(jseq, "data", &data) == 0) {
     fprintf(stderr, "Missing 'data' tag\n");
     return NULL;
   }
