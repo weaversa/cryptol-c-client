@@ -68,7 +68,7 @@ void caas_send(caas_t *caas, json_object *message) {
   json_object_object_add(message, "jsonrpc", json_object_new_string("2.0"));
 
   json_object *params;
-  if(json_object_object_get_ex(message, "params", &params) == FALSE) {
+  if(json_object_object_get_ex(message, "params", &params) == 0) {
     //Missing params, add it to message
     params = json_object_new_object();
     json_object_object_add(message, "params", params);
@@ -122,7 +122,7 @@ json_object *caas_read(caas_t *caas) {
   printf("Message received: %s\n", json_object_get_string(json_from_read));
   
   json_object *id;
-  if(json_object_object_get_ex(json_from_read, "id", &id) == FALSE) {
+  if(json_object_object_get_ex(json_from_read, "id", &id) == 0) {
     fprintf(stderr, "Cryptol service id missing\n");
     json_object_put(json_from_read);
     return NULL;
@@ -134,13 +134,13 @@ json_object *caas_read(caas_t *caas) {
     return NULL;
   }
 
-  if(json_object_object_get_ex(json_from_read, "error", NULL) == TRUE) {
+  if(json_object_object_get_ex(json_from_read, "error", NULL) == 1) {
     //return the error
     return json_from_read;
   }
   
   json_object *result;
-  if(json_object_object_get_ex(json_from_read, "result", &result) == FALSE) {
+  if(json_object_object_get_ex(json_from_read, "result", &result) == 0) {
     fprintf(stderr, "Cryptol service result missing\n");
     return NULL;
   }
@@ -148,7 +148,7 @@ json_object *caas_read(caas_t *caas) {
   json_object_put(json_from_read);
 
   //Test to see if a new state is returned
-  if(json_object_object_get_ex(result, "state", NULL) == TRUE) {
+  if(json_object_object_get_ex(result, "state", NULL) == 1) {
     //decrement reference count of old state
     json_object_put(caas->state);
     //save new state
@@ -330,7 +330,7 @@ json_object *caas_split(json_object *jseq, uint32_t parts) {
   }
 
   json_object *data;
-  if(json_object_object_get_ex(jseq, "data", &data) == FALSE) {
+  if(json_object_object_get_ex(jseq, "data", &data) == 0) {
     fprintf(stderr, "Error: Sequence missing data array\n");
     return NULL;
   }
@@ -379,7 +379,7 @@ json_object *caas_add_to_tuple(json_object *jtuple, json_object *value) {
     data = json_object_new_array();
     json_object_object_add(jtuple, "data", data);
   } else {
-    if(json_object_object_get_ex(jtuple, "data", &data) == FALSE) {
+    if(json_object_object_get_ex(jtuple, "data", &data) == 0) {
       fprintf(stderr, "Error: Tuple missing data array\n");
       return NULL;
     }
@@ -406,7 +406,7 @@ json_object *caas_add_to_record(json_object *jrec, char *field, json_object *val
     data = json_object_new_object();
     json_object_object_add(jrec, "data", data);
   } else {
-    if(json_object_object_get_ex(jrec, "data", &data) == FALSE) {
+    if(json_object_object_get_ex(jrec, "data", &data) == 0) {
       fprintf(stderr, "Error: Record missing data object\n");
       return NULL;
     }
