@@ -28,7 +28,7 @@ caas_t *caas_connect(char ip_address[16], uint32_t port) {
     return NULL;
   }
 
-  //Initialize a new session -- empty state and id of 0.
+  //Initialize a new session --- empty state and id of 0.
   caas->state = json_object_new_array();
   caas->id = json_object_new_int(0);
   
@@ -145,7 +145,6 @@ json_object *caas_read(caas_t *caas) {
     return NULL;
   }
   json_object_get(result);
-  json_object_put(json_from_read);
 
   //Test to see if a new state is returned
   if(json_object_object_get_ex(result, "state", NULL) == 1) {
@@ -162,7 +161,145 @@ json_object *caas_read(caas_t *caas) {
   json_object_put(caas->id);
   caas->id = json_object_new_int(json_object_get_int(id) + 1);
 
+  json_object_put(json_from_read);
+
   return result;
+}
+
+
+/**
+ * Get the 'value' tag of a json result
+ **/
+
+json_object *caas_get_value(json_object *jresult) {
+  json_object *answer, *value;
+
+  //Check for correct answer tag
+  if(json_object_object_get_ex(jresult, "answer", &answer) == FALSE) {
+    fprintf(stderr, "Missing 'answer' tag\n");
+    return NULL;
+  }
+
+    //Check for correct value tag
+  if(json_object_object_get_ex(answer, "value", &value) == FALSE) {
+    fprintf(stderr, "Missing 'value' tag\n");
+    return NULL;
+  }
+  
+  return value;  
+}
+
+
+/**
+ * Create a bitvector_t from a json expression.
+ * Sample input ---
+ *   { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" }
+ **/
+
+bitvector_t *caas_bitvector_t_from_bits(json_object *jbv) {
+  json_object *expression, *encoding, *data, *width;
+
+  //Check for correct expression tag
+  if(json_object_object_get_ex(jbv, "expression", &expression) == FALSE) {
+    fprintf(stderr, "Missing 'expression' tag\n");
+    return NULL;
+  }
+  if(strcmp(json_object_get_string(expression), "bits") != 0) {
+    fprintf(stderr, "'expression' tag not \"bits\"\n");
+    return NULL;
+  }
+
+  //Check for correct encoding tag
+  if(json_object_object_get_ex(jbv, "encoding", &encoding) == FALSE) {
+    fprintf(stderr, "Missing 'encoding' tag\n");
+    return NULL;
+  }
+  if(strcmp(json_object_get_string(encoding), "hex") != 0) {
+    fprintf(stderr, "'encoding' tag not \"hex\"\n");
+    return NULL;
+  }
+
+  //Get data
+  if(json_object_object_get_ex(jbv, "data", &data) == FALSE) {
+    fprintf(stderr, "Missing 'data' tag\n");
+    return NULL;
+  }
+  
+  //Get width
+  if(json_object_object_get_ex(jbv, "width", &width) == FALSE) {
+    fprintf(stderr, "Missing 'width' tag\n");
+    return NULL;
+  }
+
+  bitvector_t *ret_bv = bitvector_t_fromHexString((char *)json_object_get_string(data));
+  uint32_t nBits = json_object_get_int(width);
+  if(nBits > ret_bv->nBits) {
+    bitvector_t_widenUpdate(ret_bv, nBits - ret_bv->nBits);
+  } else if(nBits < ret_bv->nBits) {
+    bitvector_t_dropUpdate(ret_bv, ret_bv->nBits - nBits);
+  } //Else, number of bits are equal
+
+  return ret_bv;  
+}
+
+
+/**
+ * Create a sequence_t from a json expression.
+ * Sample input ---
+ *   { "expression": "sequence",
+       "data": [ { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
+                 { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" },
+                 { "data": "2" , "width": 8, "expression": "bits", "encoding": "hex" },
+                 { "data": "90", "width": 8, "expression": "bits", "encoding": "hex" }
+               ]
+     }
+ **/
+
+sequence_t *caas_sequence_t_from_sequence(json_object *jseq) {
+  json_object *expression, *data;
+
+  //Check for correct expression tag
+  if(json_object_object_get_ex(jseq, "expression", &expression) == FALSE) {
+    fprintf(stderr, "Missing 'expression' tag\n");
+    return NULL;
+  }
+  if(strcmp(json_object_get_string(expression), "sequence") != 0) {
+    fprintf(stderr, "'expression' tag not \"sequence\"\n");
+    return NULL;
+  }
+
+  //Get data
+  if(json_object_object_get_ex(jseq, "data", &data) == FALSE) {
+    fprintf(stderr, "Missing 'data' tag\n");
+    return NULL;
+  }
+  
+  uint32_t nLength = json_object_array_length(data);
+  sequence_t *seq = sequence_t_alloc(nLength);
+  
+  uint32_t i;
+  for(i = 0; i < nLength; i++) {
+    json_object *datai = json_object_array_get_idx(data, i);
+    bitvector_t *bv = caas_bitvector_t_from_bits(datai);
+    if(bv == NULL) {
+      fprintf(stderr, "Incorrectly formatted json sequence\n");
+      sequence_t_free(seq, bitvector_t_free_inner);
+      return NULL;
+    }
+    sequence_t_push(seq, *bv);
+  }
+
+  return seq;
+}
+
+
+/**
+ * Reset the Cryptol state.
+ */
+
+void caas_reset_state(caas_t *caas) {
+  json_object_put(caas->state);
+  caas->state = json_object_new_array();
 }
 
 
@@ -182,62 +319,17 @@ void caas_load_module(caas_t *caas, char *module_name) {
   
   json_object_object_add(params, "module name", json_object_new_string(module_name));
 
+  //Reset the state just prior to sending to avoid unnecessary state
+  //growth.
+  caas_reset_state(caas);
+  
   caas_send(caas, message);
 
   json_object *jresult = caas_read(caas);
   json_object_put(jresult); //free result
+  //Should return success or failure
 }
 
-/*
-{ "answer":  
-  { "value": 
-    { "expression": "sequence",
-      "data":
-      [ { "expression": "sequence",
-          "data":
-            [ { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "1" , "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "89", "width": 8, "expression": "bits", "encoding": "hex" } ],
-        },  
-	{ "expression": "sequence",
-          "data":
-            [ { "data": "23", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ab", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "23", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ab", "width": 8, "expression": "bits", "encoding": "hex" } ], 
-	},  
-        { "expression": "sequence",
-          "data":
-            [ { "data": "45", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "cd", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "45", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "cd", "width": 8, "expression": "bits", "encoding": "hex" } ], 
-        },  
-        { "expression": "sequence", 
-          "data":
-            [ { "data": "67", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ef", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "67", "width": 8, "expression": "bits", "encoding": "hex" },
-              { "data": "ef", "width": 8, "expression": "bits", "encoding": "hex" } ], 
-        } ],
-    },  
-    "type string": "Primitive::Symmetric::Cipher::Block::AES::State", 
-    "type": { "propositions": [ ],
-              "forall": [ ],
-              "type": { "type": "sequence",
-                        "length": { "value": 4, "type": "number" },
-                        "contents": { "type": "sequence",
-                                      "length": { "value": 4, "type": "number" }, 
-                                      "contents": { "width": { "value": 8, "type": "number" },
-                                                    "type": "bitvector"
-                                                  },
-                                    },
-                      }
-            }
-  }
-}
-*/
 
 /**
  * Create a JSON boolean expression from a bit
@@ -286,7 +378,7 @@ json_object *caas_command(char *command) {
  * Types of the form : {a} (fin a) => [a]
  **/
 
-json_object *caas_from_bitvector(bitvector_t *bv) {
+json_object *caas_from_bitvector_t(bitvector_t *bv) {
   if(bv == NULL) return NULL;
 
   char *hex=bitvector_t_toHexString(bv);
@@ -296,12 +388,13 @@ json_object *caas_from_bitvector(bitvector_t *bv) {
   return jbv;
 }
 
+
 /**
  * Create a JSON sequence expression from a sequence_t.
  * Types of the form : {a, b} (fin a, b) => [a][b]
  **/
 
-json_object *caas_from_sequence(sequence_t *seq) {
+json_object *caas_from_sequence_t(sequence_t *seq) {
   if(seq == NULL) return NULL;
 
   json_object *jseq = json_object_new_object();
@@ -312,10 +405,88 @@ json_object *caas_from_sequence(sequence_t *seq) {
   
   uint32_t i;
   for(i = 0; i < seq->nLength; i++) {
-    json_object_array_add(data, caas_from_bitvector(&seq->pList[i]));
+    json_object_array_add(data, caas_from_bitvector_t(&seq->pList[i]));
   }
   
   return jseq;  
+}
+
+
+/**
+ * Create a Cryptol-formatted string from a bitvector_t.
+ * This will produce, for example, (`0x1234:[15])
+ **/
+
+char *bitvector_t_toCryptolString(bitvector_t *bv) {
+  char *hex_string = bitvector_t_toHexString(bv);
+  if(hex_string == NULL) return NULL;
+  
+  uint32_t length = strlen(hex_string);
+  length += numPlaces(bv->nBits);
+  length += 9; //9 extra characters --- "(`0x:[])" + '\0' character
+
+  char *ret_string = malloc(length);
+
+  snprintf(ret_string, length, "(`0x%s:[%u])", hex_string, bv->nBits);
+  free(hex_string);
+  
+  return ret_string;
+}
+
+
+/**
+ * Create a Cryptol-formatted sequence from a sequence_t.
+ * This will produce, for example, ([`0x1234,`0xabcd]:[2][15])
+ **/
+
+char *sequence_t_toCryptolString(sequence_t *sequence) {
+  uint32_t i, length = 0;
+  char **bvs = malloc(sizeof(char *) * sequence->nLength);
+  for(i = 0; i < sequence->nLength; i++) {
+    bvs[i] = bitvector_t_toHexString(&sequence->pList[i]);
+    if(bvs[i] == NULL) { //Some problem, free all previous strings
+      uint32_t j;
+      for(j = 0;j < i; j++) {
+	free(bvs[j]);
+      }
+      free(bvs);
+      return NULL;
+    }
+    length += strlen(bvs[i]) + 4; //4 extra characters ---  ",`0x"
+  }
+  //Subtract one comma
+  length--;
+  length += numPlaces(sequence->pList[0].nBits);
+  length += numPlaces(sequence->nLength);
+  length += 10; //10 extra characters --- "([]:[][])" + '\0' character
+  
+  char *ret_string = malloc(length);
+
+  snprintf(ret_string, length, "([");
+
+  for(i = 0; i < sequence->nLength; i++) {
+    strcat(ret_string, "`0x");
+    strcat(ret_string, bvs[i]);
+    if(i + 1 < sequence->nLength) {
+      strcat(ret_string, ",");
+    }
+    free(bvs[i]);
+  }
+  strcat(ret_string, "]");
+  free(bvs);
+  
+  length = numPlaces(sequence->pList[0].nBits);
+  length += numPlaces(sequence->nLength);
+  length += 7; //7 extra characters --- ":[][])" + '\0' character
+  char *type_string = malloc(length);
+
+  snprintf(type_string, length, ":[%zu][%u])", sequence->nLength, sequence->pList[0].nBits);
+
+  strcat(ret_string, type_string);
+
+  free(type_string);
+  
+  return ret_string;
 }
 
 
@@ -469,7 +640,6 @@ json_object *caas_evaluate_expression(caas_t *caas, json_object *expression) {
   caas_send(caas, message);
 
   json_object *jresult = caas_read(caas);
-  //json_object_put(jresult); //free result
 
   return jresult;
 }
