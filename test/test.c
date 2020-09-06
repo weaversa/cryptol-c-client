@@ -30,7 +30,7 @@ void bvTest(caas_t *caas) {
   bitvector_t_free(b);
 
   //2nd test  
-  uint32_t nLength = rand()%10;
+  uint32_t nLength = rand()%10 + 1;
   sequence_t *seq = sequence_t_alloc(0);
 
   for(;nLength > 0; nLength--) {

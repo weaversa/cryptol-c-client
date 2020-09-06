@@ -25,11 +25,12 @@ caas_t *caas_connect(char ip_address[16], uint32_t port) {
   //Attempt to connect to the Cryptol service
   if(connect(caas->socket, (struct sockaddr *)&caas_addr, sizeof(caas_addr)) < 0) {
     printf("Error: Connection to Cryptol service failed\n");
+    perror("Errno is \n");
     return NULL;
   }
 
-  //Initialize a new session --- empty state and id of 0.
-  caas->state = json_object_new_array();
+  //Initialize a new session --- empty state ("null") and id of 0.
+  caas->state = json_type_null;
   caas->id = json_object_new_int(0);
   
   return caas;
@@ -108,14 +109,14 @@ json_object *caas_read(caas_t *caas) {
 
   uint32_t nLength = atoi(buffer);
 
-  char *jsonstring = malloc(nLength+1);
+  char *jsonstring = calloc((nLength+1), sizeof(char));
   r = read(caas->socket, jsonstring, nLength);
   if(r != nLength) return NULL;
 
   r = read(caas->socket, &c, 1); //Read comma
   if(r != 1) return NULL;
   if(c != ',') return NULL;
- 
+
   json_object *json_from_read = json_tokener_parse(jsonstring);
   free(jsonstring);
 
@@ -299,7 +300,7 @@ sequence_t *caas_sequence_t_from_sequence(json_object *jseq) {
 
 void caas_reset_state(caas_t *caas) {
   json_object_put(caas->state);
-  caas->state = json_object_new_array();
+  caas->state = json_type_null;
 }
 
 
@@ -322,7 +323,7 @@ void caas_load_module(caas_t *caas, char *module_name) {
   //Reset the state just prior to sending to avoid unnecessary state
   //growth.
   caas_reset_state(caas);
-  
+
   caas_send(caas, message);
 
   json_object *jresult = caas_read(caas);
